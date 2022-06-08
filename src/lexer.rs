@@ -25,10 +25,24 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
 
         let token = match self.ch {
-            b'=' => Token::Assign,
+            b'=' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::Equal
+                } else {
+                    Token::Assign
+                }
+            }
             b'+' => Token::Plus,
             b'-' => Token::Minus,
-            b'!' => Token::Bang,
+            b'!' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::NotEqual
+                } else {
+                    Token::Bang
+                }
+            }
             b'/' => Token::Slash,
             b'*' => Token::Asterisk,
             b'<' => Token::LessThan,
@@ -68,6 +82,14 @@ impl<'a> Lexer<'a> {
 
         self.position = self.read_position;
         self.read_position += 1;
+    }
+
+    fn peek_char(&mut self) -> u8 {
+        if self.read_position >= self.input.len() {
+            0
+        } else {
+            self.input.as_bytes()[self.read_position]
+        }
     }
 
     fn read_identifier(&mut self) -> Token {
@@ -133,6 +155,9 @@ mod tests {
         } else {
             return false;
         }
+
+        10 == 10;
+        10 != 9;
         ";
 
         let mut lexer = Lexer::new(input);
@@ -203,6 +228,14 @@ mod tests {
             Token::False,
             Token::SemiColon,
             Token::RightBrace,
+            Token::Int(10),
+            Token::Equal,
+            Token::Int(10),
+            Token::SemiColon,
+            Token::Int(10),
+            Token::NotEqual,
+            Token::Int(9),
+            Token::SemiColon,
             Token::Eof,
         ];
 
