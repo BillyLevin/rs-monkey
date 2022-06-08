@@ -27,6 +27,12 @@ impl<'a> Lexer<'a> {
         let token = match self.ch {
             b'=' => Token::Assign,
             b'+' => Token::Plus,
+            b'-' => Token::Minus,
+            b'!' => Token::Bang,
+            b'/' => Token::Slash,
+            b'*' => Token::Asterisk,
+            b'<' => Token::LessThan,
+            b'>' => Token::GreaterThan,
             b'(' => Token::LeftParen,
             b')' => Token::RightParen,
             b'{' => Token::LeftBrace,
@@ -114,6 +120,8 @@ mod tests {
         };
 
         let result = add(five, ten);
+        !-/*5;
+        5 < 10 > 5;
         ";
 
         let mut lexer = Lexer::new(input);
@@ -154,6 +162,18 @@ mod tests {
             Token::Comma,
             Token::Identifier(String::from("ten")),
             Token::RightParen,
+            Token::SemiColon,
+            Token::Bang,
+            Token::Minus,
+            Token::Slash,
+            Token::Asterisk,
+            Token::Int(5),
+            Token::SemiColon,
+            Token::Int(5),
+            Token::LessThan,
+            Token::Int(10),
+            Token::GreaterThan,
+            Token::Int(5),
             Token::SemiColon,
             Token::Eof,
         ];
