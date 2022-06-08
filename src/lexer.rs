@@ -22,6 +22,8 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next_token(&mut self) -> Token {
+        self.skip_whitespace();
+
         let token = match self.ch {
             b'=' => Token::Assign,
             b'+' => Token::Plus,
@@ -31,6 +33,8 @@ impl<'a> Lexer<'a> {
             b'}' => Token::RightBrace,
             b',' => Token::Comma,
             b';' => Token::SemiColon,
+            b'a'..=b'z' | b'A'..=b'Z' => return self.read_identifier(),
+            b'0'..=b'9' => return self.read_number(),
             0 => Token::Eof,
             _ => Token::Illegal,
         };
@@ -38,6 +42,15 @@ impl<'a> Lexer<'a> {
         self.read_char();
 
         return token;
+    }
+
+    fn skip_whitespace(&mut self) {
+        loop {
+            match self.ch {
+                b' ' | b'\t' | b'\n' | b'\r' => self.read_char(),
+                _ => break,
+            }
+        }
     }
 
     fn read_char(&mut self) {
@@ -50,6 +63,40 @@ impl<'a> Lexer<'a> {
         self.position = self.read_position;
         self.read_position += 1;
     }
+
+    fn read_identifier(&mut self) -> Token {
+        let position = self.position;
+
+        loop {
+            match self.ch {
+                b'a'..=b'z' | b'A'..=b'Z' => self.read_char(),
+                _ => break,
+            }
+        }
+
+        let identifier = &self.input[position..self.position];
+
+        match identifier {
+            "fn" => Token::Function,
+            "let" => Token::Let,
+            _ => Token::Identifier(String::from(identifier)),
+        }
+    }
+
+    fn read_number(&mut self) -> Token {
+        let position = self.position;
+
+        loop {
+            match self.ch {
+                b'0'..=b'9' => self.read_char(),
+                _ => break,
+            }
+        }
+
+        let number = &self.input[position..self.position];
+
+        Token::Int(number.parse().unwrap())
+    }
 }
 
 #[cfg(test)]
@@ -58,19 +105,57 @@ mod tests {
 
     #[test]
     fn next_token() {
-        let input = "=+(){},;";
+        let input = "
+        let five = 5;
+        let ten = 10;
+        
+        let add = fn(x, y) {
+            x + y;
+        };
+
+        let result = add(five, ten);
+        ";
 
         let mut lexer = Lexer::new(input);
 
         let expected = vec![
+            Token::Let,
+            Token::Identifier(String::from("five")),
             Token::Assign,
-            Token::Plus,
+            Token::Int(5),
+            Token::SemiColon,
+            Token::Let,
+            Token::Identifier(String::from("ten")),
+            Token::Assign,
+            Token::Int(10),
+            Token::SemiColon,
+            Token::Let,
+            Token::Identifier(String::from("add")),
+            Token::Assign,
+            Token::Function,
             Token::LeftParen,
+            Token::Identifier(String::from("x")),
+            Token::Comma,
+            Token::Identifier(String::from("y")),
             Token::RightParen,
             Token::LeftBrace,
-            Token::RightBrace,
-            Token::Comma,
+            Token::Identifier(String::from("x")),
+            Token::Plus,
+            Token::Identifier(String::from("y")),
             Token::SemiColon,
+            Token::RightBrace,
+            Token::SemiColon,
+            Token::Let,
+            Token::Identifier(String::from("result")),
+            Token::Assign,
+            Token::Identifier(String::from("add")),
+            Token::LeftParen,
+            Token::Identifier(String::from("five")),
+            Token::Comma,
+            Token::Identifier(String::from("ten")),
+            Token::RightParen,
+            Token::SemiColon,
+            Token::Eof,
         ];
 
         for token in expected {
