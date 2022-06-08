@@ -85,6 +85,11 @@ impl<'a> Lexer<'a> {
         match identifier {
             "fn" => Token::Function,
             "let" => Token::Let,
+            "true" => Token::True,
+            "false" => Token::False,
+            "if" => Token::If,
+            "else" => Token::Else,
+            "return" => Token::Return,
             _ => Token::Identifier(String::from(identifier)),
         }
     }
@@ -122,6 +127,12 @@ mod tests {
         let result = add(five, ten);
         !-/*5;
         5 < 10 > 5;
+
+        if (5 < 10) {
+            return true;
+        } else {
+            return false;
+        }
         ";
 
         let mut lexer = Lexer::new(input);
@@ -175,6 +186,23 @@ mod tests {
             Token::GreaterThan,
             Token::Int(5),
             Token::SemiColon,
+            Token::If,
+            Token::LeftParen,
+            Token::Int(5),
+            Token::LessThan,
+            Token::Int(10),
+            Token::RightParen,
+            Token::LeftBrace,
+            Token::Return,
+            Token::True,
+            Token::SemiColon,
+            Token::RightBrace,
+            Token::Else,
+            Token::LeftBrace,
+            Token::Return,
+            Token::False,
+            Token::SemiColon,
+            Token::RightBrace,
             Token::Eof,
         ];
 

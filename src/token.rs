@@ -31,4 +31,9 @@ pub enum Token {
     // keywords
     Function,
     Let,
+    True,
+    False,
+    If,
+    Else,
+    Return,
 }
