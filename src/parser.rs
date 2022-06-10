@@ -1,8 +1,18 @@
 use crate::{
-    ast::{Identifier, Program, Statement},
+    ast::{Expression, Identifier, Literal, Program, Statement},
     lexer::Lexer,
     token::Token,
 };
+
+enum Precedence {
+    Lowest,
+    Equals,      // ==
+    LessGreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+    Call,        // myFunction(x)
+}
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -55,7 +65,8 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
-            _ => None,
+            Token::Return => self.parse_return_statement(),
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -83,6 +94,60 @@ impl<'a> Parser<'a> {
         }
 
         Some(Statement::Let(identifier))
+    }
+
+    fn parse_return_statement(&mut self) -> Option<Statement> {
+        self.next_token();
+
+        let return_value = self.parse_expression(Precedence::Lowest)?;
+
+        // semi-colon is optional
+        if self.peek_token_is(Token::SemiColon) {
+            self.next_token();
+        }
+
+        Some(Statement::Return(return_value))
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<Statement> {
+        let expression = self.parse_expression(Precedence::Lowest)?;
+
+        // semi-colon is optional
+        if self.peek_token_is(Token::SemiColon) {
+            self.next_token();
+        }
+
+        Some(Statement::Expression(expression))
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+        let left = self.parse_prefix()?;
+
+        Some(left)
+    }
+
+    fn parse_prefix(&mut self) -> Option<Expression> {
+        match self.current_token {
+            Token::Identifier(_) => self.parse_identifier(),
+            Token::Int(_) => self.parse_integer_literal(),
+            _ => None,
+        }
+    }
+
+    fn parse_identifier(&mut self) -> Option<Expression> {
+        match self.current_token {
+            Token::Identifier(ref name) => {
+                Some(Expression::Identifier(Identifier(name.to_string())))
+            }
+            _ => None,
+        }
+    }
+
+    fn parse_integer_literal(&mut self) -> Option<Expression> {
+        match self.current_token {
+            Token::Int(num) => Some(Expression::Literal(Literal::Int(num))),
+            _ => None,
+        }
     }
 
     fn next_token(&mut self) {
@@ -167,5 +232,66 @@ mod tests {
                 (Statement::Let(Identifier(String::from("foobar")))),
             ]
         );
+    }
+
+    #[test]
+    fn parse_return_statements() {
+        let input = "
+        return 5;
+        return 10;
+        return 993322;
+        ";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![
+                Statement::Return(Expression::Literal(Literal::Int(5))),
+                Statement::Return(Expression::Literal(Literal::Int(10))),
+                Statement::Return(Expression::Literal(Literal::Int(993322)))
+            ]
+        )
+    }
+
+    #[test]
+    fn parse_identifier_expressions() {
+        let input = "foobar;";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::Identifier(Identifier(
+                String::from("foobar")
+            )))]
+        )
+    }
+
+    #[test]
+    fn parse_integer_literal_expressions() {
+        let input = "5;";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::Literal(Literal::Int(5)))]
+        )
     }
 }
