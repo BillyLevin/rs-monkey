@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
             Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Slash | Token::Asterisk => Precedence::Product,
-            _ => panic!("precedence not found"),
+            _ => Precedence::Lowest,
         }
     }
 }
@@ -461,6 +461,188 @@ mod tests {
                     Box::new(Expression::Literal(Literal::Int(5))),
                     Infix::NotEqual,
                     Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+
+            check_parser_errors(parser);
+
+            assert_eq!(program, vec![expected]);
+        }
+    }
+
+    #[test]
+    fn parse_operator_precedence() {
+        let tests = vec![
+            (
+                "-a * b",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Prefix(
+                        Prefix::Minus,
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                    )),
+                    Infix::Multiply,
+                    Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                )),
+            ),
+            (
+                "!-a",
+                Statement::Expression(Expression::Prefix(
+                    Prefix::Not,
+                    Box::new(Expression::Prefix(
+                        Prefix::Minus,
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                    )),
+                )),
+            ),
+            (
+                "a + b + c",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                        Infix::Plus,
+                        Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                    )),
+                    Infix::Plus,
+                    Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                )),
+            ),
+            (
+                "a + b - c",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                        Infix::Plus,
+                        Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                    )),
+                    Infix::Minus,
+                    Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                )),
+            ),
+            (
+                "a * b * c",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                        Infix::Multiply,
+                        Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                    )),
+                    Infix::Multiply,
+                    Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                )),
+            ),
+            (
+                "a * b / c",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                        Infix::Multiply,
+                        Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                    )),
+                    Infix::Divide,
+                    Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                )),
+            ),
+            (
+                "a + b / c",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                    Infix::Plus,
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                        Infix::Divide,
+                        Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                    )),
+                )),
+            ),
+            (
+                "a + b * c + d / e - f",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                            Infix::Plus,
+                            Box::new(Expression::Infix(
+                                Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                                Infix::Multiply,
+                                Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                            )),
+                        )),
+                        Infix::Plus,
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Identifier(Identifier(String::from("d")))),
+                            Infix::Divide,
+                            Box::new(Expression::Identifier(Identifier(String::from("e")))),
+                        )),
+                    )),
+                    Infix::Minus,
+                    Box::new(Expression::Identifier(Identifier(String::from("f")))),
+                )),
+            ),
+            (
+                "5 > 4 == 3 < 4",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(5))),
+                        Infix::GreaterThan,
+                        Box::new(Expression::Literal(Literal::Int(4))),
+                    )),
+                    Infix::Equal,
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(3))),
+                        Infix::LessThan,
+                        Box::new(Expression::Literal(Literal::Int(4))),
+                    )),
+                )),
+            ),
+            (
+                "5 < 4 != 3 > 4",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(5))),
+                        Infix::LessThan,
+                        Box::new(Expression::Literal(Literal::Int(4))),
+                    )),
+                    Infix::NotEqual,
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(3))),
+                        Infix::GreaterThan,
+                        Box::new(Expression::Literal(Literal::Int(4))),
+                    )),
+                )),
+            ),
+            (
+                "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(3))),
+                        Infix::Plus,
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(4))),
+                            Infix::Multiply,
+                            Box::new(Expression::Literal(Literal::Int(5))),
+                        )),
+                    )),
+                    Infix::Equal,
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(3))),
+                            Infix::Multiply,
+                            Box::new(Expression::Literal(Literal::Int(1))),
+                        )),
+                        Infix::Plus,
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(4))),
+                            Infix::Multiply,
+                            Box::new(Expression::Literal(Literal::Int(5))),
+                        )),
+                    )),
                 )),
             ),
         ];
