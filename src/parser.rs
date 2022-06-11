@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Identifier, Infix, Literal, Prefix, Program, Statement},
+    ast::{BlockStatement, Expression, Identifier, Infix, Literal, Prefix, Program, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -69,6 +69,22 @@ impl<'a> Parser<'a> {
             Token::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let mut statements = Vec::new();
+
+        self.next_token();
+
+        while !self.current_token_is(Token::RightBrace) && !self.current_token_is(Token::Eof) {
+            if let Some(statement) = self.parse_statement() {
+                statements.push(statement);
+            }
+
+            self.next_token();
+        }
+
+        statements
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
@@ -151,6 +167,7 @@ impl<'a> Parser<'a> {
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => Some(self.parse_boolean_literal_expression()),
             Token::LeftParen => self.parse_grouped_expression(),
+            Token::If => self.parse_if_expression(),
             _ => None,
         }
     }
@@ -199,6 +216,44 @@ impl<'a> Parser<'a> {
         }
 
         Some(expression)
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        if !self.expect_peek(Token::LeftParen) {
+            return None;
+        }
+
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(Token::RightParen) {
+            return None;
+        }
+
+        if !self.expect_peek(Token::LeftBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_statement();
+
+        let mut alternative = None;
+
+        if self.peek_token_is(Token::Else) {
+            self.next_token();
+
+            if !self.expect_peek(Token::LeftBrace) {
+                return None;
+            }
+
+            alternative = Some(self.parse_block_statement());
+        }
+
+        Some(Expression::If {
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+        })
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -832,5 +887,59 @@ mod tests {
 
             assert_eq!(program, vec![expected]);
         }
+    }
+
+    #[test]
+    fn parse_if_expressions() {
+        let input = "if (x < y) { x }";
+        let lexer = Lexer::new(input);
+
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::If {
+                condition: Box::new(Expression::Infix(
+                    Box::new(Expression::Identifier(Identifier(String::from("x")))),
+                    Infix::LessThan,
+                    Box::new(Expression::Identifier(Identifier(String::from("y")))),
+                )),
+                consequence: vec![Statement::Expression(Expression::Identifier(Identifier(
+                    String::from("x")
+                )))],
+                alternative: None,
+            }),]
+        )
+    }
+
+    #[test]
+    fn parse_if_else_expressions() {
+        let input = "if (x < y) { x } else { y }";
+        let lexer = Lexer::new(input);
+
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::If {
+                condition: Box::new(Expression::Infix(
+                    Box::new(Expression::Identifier(Identifier(String::from("x")))),
+                    Infix::LessThan,
+                    Box::new(Expression::Identifier(Identifier(String::from("y")))),
+                )),
+                consequence: vec![Statement::Expression(Expression::Identifier(Identifier(
+                    String::from("x")
+                )))],
+                alternative: Some(vec![Statement::Expression(Expression::Identifier(
+                    Identifier(String::from("y"))
+                ))]),
+            }),]
+        )
     }
 }

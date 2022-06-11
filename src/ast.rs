@@ -1,4 +1,5 @@
 pub type Program = Vec<Statement>;
+pub type BlockStatement = Vec<Statement>;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -13,6 +14,11 @@ pub enum Expression {
     Identifier(Identifier),
     Prefix(Prefix, Box<Expression>),
     Infix(Box<Expression>, Infix, Box<Expression>),
+    If {
+        condition: Box<Expression>,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
