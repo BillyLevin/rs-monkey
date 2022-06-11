@@ -11,6 +11,7 @@ pub enum Statement {
 pub enum Expression {
     Literal(Literal),
     Identifier(Identifier),
+    Prefix(Prefix, Box<Expression>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -20,3 +21,9 @@ pub enum Literal {
 
 #[derive(Debug, PartialEq)]
 pub struct Identifier(pub String);
+
+#[derive(Debug, PartialEq)]
+pub enum Prefix {
+    Not,
+    Minus,
+}

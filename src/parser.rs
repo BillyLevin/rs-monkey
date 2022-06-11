@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Identifier, Literal, Program, Statement},
+    ast::{Expression, Identifier, Literal, Prefix, Program, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -130,6 +130,7 @@ impl<'a> Parser<'a> {
         match self.current_token {
             Token::Identifier(_) => self.parse_identifier(),
             Token::Int(_) => self.parse_integer_literal(),
+            Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => None,
         }
     }
@@ -148,6 +149,20 @@ impl<'a> Parser<'a> {
             Token::Int(num) => Some(Expression::Literal(Literal::Int(num))),
             _ => None,
         }
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        let operator = match self.current_token {
+            Token::Bang => Prefix::Not,
+            Token::Minus => Prefix::Minus,
+            _ => unreachable!(),
+        };
+
+        self.next_token();
+
+        let right = self.parse_expression(Precedence::Prefix)?;
+
+        return Some(Expression::Prefix(operator, Box::new(right)));
     }
 
     fn next_token(&mut self) {
@@ -293,5 +308,36 @@ mod tests {
             program,
             vec![Statement::Expression(Expression::Literal(Literal::Int(5)))]
         )
+    }
+
+    #[test]
+    fn parse_prefix_expressions() {
+        let tests = vec![
+            (
+                "!5;",
+                Statement::Expression(Expression::Prefix(
+                    Prefix::Not,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "-15;",
+                Statement::Expression(Expression::Prefix(
+                    Prefix::Minus,
+                    Box::new(Expression::Literal(Literal::Int(15))),
+                )),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+
+            check_parser_errors(parser);
+
+            assert_eq!(program, vec![expected]);
+        }
     }
 }
