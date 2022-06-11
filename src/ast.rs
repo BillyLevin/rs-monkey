@@ -18,6 +18,7 @@ pub enum Expression {
 #[derive(Debug, PartialEq)]
 pub enum Literal {
     Int(i64),
+    Boolean(bool),
 }
 
 #[derive(Debug, PartialEq)]
