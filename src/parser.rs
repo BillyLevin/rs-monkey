@@ -146,26 +146,24 @@ impl<'a> Parser<'a> {
 
     fn parse_prefix(&mut self) -> Option<Expression> {
         match self.current_token {
-            Token::Identifier(_) => self.parse_identifier(),
-            Token::Int(_) => self.parse_integer_literal(),
+            Token::Identifier(_) => Some(self.parse_identifier()),
+            Token::Int(_) => Some(self.parse_integer_literal()),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => None,
         }
     }
 
-    fn parse_identifier(&mut self) -> Option<Expression> {
+    fn parse_identifier(&mut self) -> Expression {
         match self.current_token {
-            Token::Identifier(ref name) => {
-                Some(Expression::Identifier(Identifier(name.to_string())))
-            }
-            _ => None,
+            Token::Identifier(ref name) => Expression::Identifier(Identifier(name.to_string())),
+            _ => unreachable!(),
         }
     }
 
-    fn parse_integer_literal(&mut self) -> Option<Expression> {
+    fn parse_integer_literal(&mut self) -> Expression {
         match self.current_token {
-            Token::Int(num) => Some(Expression::Literal(Literal::Int(num))),
-            _ => None,
+            Token::Int(num) => Expression::Literal(Literal::Int(num)),
+            _ => unreachable!(),
         }
     }
 
