@@ -12,6 +12,7 @@ pub enum Expression {
     Literal(Literal),
     Identifier(Identifier),
     Prefix(Prefix, Box<Expression>),
+    Infix(Box<Expression>, Infix, Box<Expression>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,4 +27,16 @@ pub struct Identifier(pub String);
 pub enum Prefix {
     Not,
     Minus,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Infix {
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+    GreaterThan,
+    LessThan,
+    Equal,
+    NotEqual,
 }

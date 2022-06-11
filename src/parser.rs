@@ -1,9 +1,10 @@
 use crate::{
-    ast::{Expression, Identifier, Literal, Prefix, Program, Statement},
+    ast::{Expression, Identifier, Infix, Literal, Prefix, Program, Statement},
     lexer::Lexer,
     token::Token,
 };
 
+#[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
     Equals,      // ==
@@ -121,7 +122,24 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
-        let left = self.parse_prefix()?;
+        let mut left = self.parse_prefix()?;
+
+        while !self.peek_token_is(Token::SemiColon) && precedence < self.peek_precedence() {
+            match self.peek_token {
+                Token::Plus
+                | Token::Minus
+                | Token::Asterisk
+                | Token::Slash
+                | Token::GreaterThan
+                | Token::LessThan
+                | Token::Equal
+                | Token::NotEqual => {
+                    self.next_token();
+                    left = self.parse_infix_expression(left)?;
+                }
+                _ => return Some(left),
+            }
+        }
 
         Some(left)
     }
@@ -165,6 +183,27 @@ impl<'a> Parser<'a> {
         return Some(Expression::Prefix(operator, Box::new(right)));
     }
 
+    fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
+        let infix = match self.current_token {
+            Token::Plus => Infix::Plus,
+            Token::Minus => Infix::Minus,
+            Token::Asterisk => Infix::Multiply,
+            Token::Slash => Infix::Divide,
+            Token::GreaterThan => Infix::GreaterThan,
+            Token::LessThan => Infix::LessThan,
+            Token::Equal => Infix::Equal,
+            Token::NotEqual => Infix::NotEqual,
+            _ => return None,
+        };
+
+        let precedence = self.current_precedence();
+
+        self.next_token();
+
+        let right = self.parse_expression(precedence)?;
+        Some(Expression::Infix(Box::new(left), infix, Box::new(right)))
+    }
+
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
@@ -200,6 +239,24 @@ impl<'a> Parser<'a> {
             "expected some Identifier token, got {:?} instead",
             self.peek_token
         ));
+    }
+
+    fn peek_precedence(&mut self) -> Precedence {
+        Self::get_token_precedence(&self.peek_token)
+    }
+
+    fn current_precedence(&mut self) -> Precedence {
+        Self::get_token_precedence(&self.current_token)
+    }
+
+    fn get_token_precedence(token: &Token) -> Precedence {
+        match token {
+            Token::Equal | Token::NotEqual => Precedence::Equals,
+            Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
+            Token::Plus | Token::Minus => Precedence::Sum,
+            Token::Slash | Token::Asterisk => Precedence::Product,
+            _ => panic!("precedence not found"),
+        }
     }
 }
 
@@ -325,6 +382,87 @@ mod tests {
                 Statement::Expression(Expression::Prefix(
                     Prefix::Minus,
                     Box::new(Expression::Literal(Literal::Int(15))),
+                )),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+
+            check_parser_errors(parser);
+
+            assert_eq!(program, vec![expected]);
+        }
+    }
+
+    #[test]
+    fn parse_infix_expressions() {
+        let tests = vec![
+            (
+                "5 + 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::Plus,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 - 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::Minus,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 * 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::Multiply,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 / 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::Divide,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 > 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::GreaterThan,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 < 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::LessThan,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 == 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::Equal,
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                )),
+            ),
+            (
+                "5 != 5;",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(5))),
+                    Infix::NotEqual,
+                    Box::new(Expression::Literal(Literal::Int(5))),
                 )),
             ),
         ];
