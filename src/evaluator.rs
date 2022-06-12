@@ -78,7 +78,10 @@ impl Evaluator {
             Infix::Minus => Some(Object::Int(left_val - right_val)),
             Infix::Multiply => Some(Object::Int(left_val * right_val)),
             Infix::Divide => Some(Object::Int(left_val / right_val)),
-            _ => Some(Object::Null),
+            Infix::LessThan => Some(Object::Boolean(left_val < right_val)),
+            Infix::GreaterThan => Some(Object::Boolean(left_val > right_val)),
+            Infix::Equal => Some(Object::Boolean(left_val == right_val)),
+            Infix::NotEqual => Some(Object::Boolean(left_val != right_val)),
         }
     }
 
@@ -143,6 +146,14 @@ mod tests {
         let tests = vec![
             ("true", Some(Object::Boolean(true))),
             ("false", Some(Object::Boolean(false))),
+            ("1 < 2", Some(Object::Boolean(true))),
+            ("1 > 2", Some(Object::Boolean(false))),
+            ("1 < 1", Some(Object::Boolean(false))),
+            ("1 > 1", Some(Object::Boolean(false))),
+            ("1 == 1", Some(Object::Boolean(true))),
+            ("1 != 1", Some(Object::Boolean(false))),
+            ("1 == 2", Some(Object::Boolean(false))),
+            ("1 != 2", Some(Object::Boolean(true))),
         ];
 
         for (input, expected) in tests {
