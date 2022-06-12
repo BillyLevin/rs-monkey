@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, parser::Parser};
+use crate::{evaluator::Evaluator, lexer::Lexer, parser::Parser};
 use rustyline::Editor;
 
 pub struct Repl;
@@ -26,7 +26,11 @@ impl Repl {
                         continue;
                     }
 
-                    println!("{:?}", program);
+                    let mut evaluator = Evaluator::new();
+
+                    if let Some(evaluated) = evaluator.eval(program) {
+                        println!("{}", evaluated);
+                    }
                 }
                 _ => break,
             }
