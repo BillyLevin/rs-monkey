@@ -71,6 +71,13 @@ impl Evaluator {
                     None
                 }
             }
+            Object::Boolean(left_val) => {
+                if let Object::Boolean(right_val) = right {
+                    Some(self.eval_boolean_infix_expression(left_val, infix, right_val))
+                } else {
+                    None
+                }
+            }
             _ => todo!(),
         }
     }
@@ -85,6 +92,14 @@ impl Evaluator {
             Infix::GreaterThan => Object::Boolean(left > right),
             Infix::Equal => Object::Boolean(left == right),
             Infix::NotEqual => Object::Boolean(left != right),
+        }
+    }
+
+    fn eval_boolean_infix_expression(&mut self, left: bool, infix: Infix, right: bool) -> Object {
+        match infix {
+            Infix::Equal => Object::Boolean(left == right),
+            Infix::NotEqual => Object::Boolean(left != right),
+            _ => Object::Null,
         }
     }
 
@@ -157,6 +172,15 @@ mod tests {
             ("1 != 1", Some(Object::Boolean(false))),
             ("1 == 2", Some(Object::Boolean(false))),
             ("1 != 2", Some(Object::Boolean(true))),
+            ("true == true", Some(Object::Boolean(true))),
+            ("false == false", Some(Object::Boolean(true))),
+            ("true == false", Some(Object::Boolean(false))),
+            ("true != false", Some(Object::Boolean(true))),
+            ("false != true", Some(Object::Boolean(true))),
+            ("(1 < 2) == true", Some(Object::Boolean(true))),
+            ("(1 < 2) == false", Some(Object::Boolean(false))),
+            ("(1 > 2) == true", Some(Object::Boolean(false))),
+            ("(1 > 2) == false", Some(Object::Boolean(true))),
         ];
 
         for (input, expected) in tests {
