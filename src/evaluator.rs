@@ -48,7 +48,7 @@ impl Evaluator {
 
         match prefix {
             Prefix::Not => Some(self.eval_not_operator_expression(right)),
-            _ => Some(Object::Null),
+            Prefix::Minus => Some(self.eval_minus_operator_expression(right)),
         }
     }
 
@@ -57,6 +57,13 @@ impl Evaluator {
             Object::Boolean(boolean) => Object::Boolean(!boolean),
             Object::Null => Object::Boolean(true),
             _ => Object::Boolean(false),
+        }
+    }
+
+    fn eval_minus_operator_expression(&mut self, right: Object) -> Object {
+        match right {
+            Object::Int(num) => Object::Int(-num),
+            _ => Object::Null,
         }
     }
 }
@@ -78,7 +85,12 @@ mod tests {
 
     #[test]
     fn eval_integer_expressions() {
-        let tests = vec![("5", Some(Object::Int(5))), ("10", Some(Object::Int(10)))];
+        let tests = vec![
+            ("5", Some(Object::Int(5))),
+            ("10", Some(Object::Int(10))),
+            ("-5", Some(Object::Int(-5))),
+            ("-10", Some(Object::Int(-10))),
+        ];
 
         for (input, expected) in tests {
             assert_eq!(eval(input), expected);
