@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, token::Token};
+use crate::{lexer::Lexer, parser::Parser};
 use rustyline::Editor;
 
 pub struct Repl;
@@ -12,14 +12,21 @@ impl Repl {
         loop {
             match rl.readline(PROMPT) {
                 Ok(line) => {
-                    let mut lexer = Lexer::new(&line);
+                    let lexer = Lexer::new(&line);
+                    let mut parser = Parser::new(lexer);
 
-                    loop {
-                        match lexer.next_token() {
-                            Token::Eof => break,
-                            token => println!("{:?}", token),
+                    let program = parser.parse_program();
+                    let errors = parser.errors();
+
+                    if errors.len() != 0 {
+                        for error in errors {
+                            println!("\t{}", error);
                         }
+
+                        continue;
                     }
+
+                    println!("{:?}", program);
                 }
                 _ => break,
             }
