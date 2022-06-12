@@ -37,7 +37,7 @@ impl Evaluator {
     fn eval_literal(&mut self, literal: Literal) -> Object {
         match literal {
             Literal::Int(num) => Object::Int(num),
-            _ => todo!(),
+            Literal::Boolean(boolean) => Object::Boolean(boolean),
         }
     }
 }
@@ -60,6 +60,18 @@ mod tests {
     #[test]
     fn eval_integer_expressions() {
         let tests = vec![("5", Some(Object::Int(5))), ("10", Some(Object::Int(10)))];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
+    }
+
+    #[test]
+    fn eval_boolean_expressions() {
+        let tests = vec![
+            ("true", Some(Object::Boolean(true))),
+            ("false", Some(Object::Boolean(false))),
+        ];
 
         for (input, expected) in tests {
             assert_eq!(eval(input), expected);
