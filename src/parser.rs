@@ -964,6 +964,88 @@ mod tests {
                     )),
                 )),
             ),
+            (
+                "a + add(b * c) + d",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                        Infix::Plus,
+                        Box::new(Expression::Call {
+                            function: Box::new(Expression::Identifier(Identifier(String::from(
+                                "add",
+                            )))),
+                            arguments: vec![Expression::Infix(
+                                Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                                Infix::Multiply,
+                                Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                            )],
+                        }),
+                    )),
+                    Infix::Plus,
+                    Box::new(Expression::Identifier(Identifier(String::from("d")))),
+                )),
+            ),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                Statement::Expression(Expression::Call {
+                    function: Box::new(Expression::Identifier(Identifier(String::from("add")))),
+                    arguments: vec![
+                        Expression::Identifier(Identifier(String::from("a"))),
+                        Expression::Identifier(Identifier(String::from("b"))),
+                        Expression::Literal(Literal::Int(1)),
+                        Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(2))),
+                            Infix::Multiply,
+                            Box::new(Expression::Literal(Literal::Int(3))),
+                        ),
+                        Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(4))),
+                            Infix::Plus,
+                            Box::new(Expression::Literal(Literal::Int(5))),
+                        ),
+                        Expression::Call {
+                            function: Box::new(Expression::Identifier(Identifier(String::from(
+                                "add",
+                            )))),
+                            arguments: vec![
+                                Expression::Literal(Literal::Int(6)),
+                                Expression::Infix(
+                                    Box::new(Expression::Literal(Literal::Int(7))),
+                                    Infix::Multiply,
+                                    Box::new(Expression::Literal(Literal::Int(8))),
+                                ),
+                            ],
+                        },
+                    ],
+                }),
+            ),
+            (
+                "add(a + b + c * d / f + g)",
+                Statement::Expression(Expression::Call {
+                    function: Box::new(Expression::Identifier(Identifier(String::from("add")))),
+                    arguments: vec![Expression::Infix(
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Infix(
+                                Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                                Infix::Plus,
+                                Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                            )),
+                            Infix::Plus,
+                            Box::new(Expression::Infix(
+                                Box::new(Expression::Infix(
+                                    Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                                    Infix::Multiply,
+                                    Box::new(Expression::Identifier(Identifier(String::from("d")))),
+                                )),
+                                Infix::Divide,
+                                Box::new(Expression::Identifier(Identifier(String::from("f")))),
+                            )),
+                        )),
+                        Infix::Plus,
+                        Box::new(Expression::Identifier(Identifier(String::from("g")))),
+                    )],
+                }),
+            ),
         ];
 
         for (input, expected) in tests {
