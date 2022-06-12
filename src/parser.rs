@@ -105,12 +105,15 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        // TODO: currently we are skipping the expression being assigned to the identifier
-        while !self.current_token_is(Token::SemiColon) {
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token_is(Token::SemiColon) {
             self.next_token();
         }
 
-        Some(Statement::Let(identifier))
+        Some(Statement::Let(identifier, value))
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {
@@ -461,9 +464,18 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                (Statement::Let(Identifier(String::from("x")))),
-                (Statement::Let(Identifier(String::from("y")))),
-                (Statement::Let(Identifier(String::from("foobar")))),
+                (Statement::Let(
+                    Identifier(String::from("x")),
+                    Expression::Literal(Literal::Int(5))
+                )),
+                (Statement::Let(
+                    Identifier(String::from("y")),
+                    Expression::Literal(Literal::Int(10))
+                )),
+                (Statement::Let(
+                    Identifier(String::from("foobar")),
+                    Expression::Literal(Literal::Int(838383))
+                )),
             ]
         );
     }

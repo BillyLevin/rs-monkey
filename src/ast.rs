@@ -3,7 +3,7 @@ pub type BlockStatement = Vec<Statement>;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
-    Let(Identifier /* , Expression */),
+    Let(Identifier, Expression),
     Return(Expression),
     Expression(Expression),
 }
