@@ -19,6 +19,10 @@ pub enum Expression {
         consequence: BlockStatement,
         alternative: Option<BlockStatement>,
     },
+    Function {
+        parameters: Vec<Identifier>,
+        body: BlockStatement,
+    },
 }
 
 #[derive(Debug, PartialEq)]

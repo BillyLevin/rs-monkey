@@ -162,20 +162,27 @@ impl<'a> Parser<'a> {
 
     fn parse_prefix(&mut self) -> Option<Expression> {
         match self.current_token {
-            Token::Identifier(_) => Some(self.parse_identifier()),
+            Token::Identifier(_) => self.parse_identifier_expression(),
             Token::Int(_) => Some(self.parse_integer_literal()),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => Some(self.parse_boolean_literal_expression()),
             Token::LeftParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
+            Token::Function => self.parse_function_literal_expression(),
             _ => None,
         }
     }
 
-    fn parse_identifier(&mut self) -> Expression {
+    fn parse_identifier_expression(&mut self) -> Option<Expression> {
+        let identifier = self.parse_identifier()?;
+
+        Some(Expression::Identifier(identifier))
+    }
+
+    fn parse_identifier(&mut self) -> Option<Identifier> {
         match self.current_token {
-            Token::Identifier(ref name) => Expression::Identifier(Identifier(name.to_string())),
-            _ => unreachable!(),
+            Token::Identifier(ref name) => Some(Identifier(name.to_string())),
+            _ => None,
         }
     }
 
@@ -254,6 +261,48 @@ impl<'a> Parser<'a> {
             consequence,
             alternative,
         })
+    }
+
+    fn parse_function_literal_expression(&mut self) -> Option<Expression> {
+        if !self.expect_peek(Token::LeftParen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters()?;
+
+        if !self.expect_peek(Token::LeftBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Expression::Function { parameters, body })
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
+        let mut identifiers = Vec::new();
+
+        if self.peek_token_is(Token::RightParen) {
+            self.next_token();
+            return Some(identifiers);
+        }
+
+        self.next_token();
+
+        identifiers.push(self.parse_identifier()?);
+
+        while self.peek_token_is(Token::Comma) {
+            self.next_token();
+            self.next_token();
+
+            identifiers.push(self.parse_identifier()?);
+        }
+
+        if !self.expect_peek(Token::RightParen) {
+            return None;
+        }
+
+        Some(identifiers)
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -940,6 +989,30 @@ mod tests {
                     Identifier(String::from("y"))
                 ))]),
             }),]
+        )
+    }
+
+    #[test]
+    fn parse_function_literal_expressions() {
+        let input = "fn(x, y) { x + y; }";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::Function {
+                parameters: vec![Identifier(String::from("x")), Identifier(String::from("y"))],
+                body: vec![Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Identifier(Identifier(String::from("x")))),
+                    Infix::Plus,
+                    Box::new(Expression::Identifier(Identifier(String::from("y")))),
+                ))]
+            })]
         )
     }
 }
