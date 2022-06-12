@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Literal, Program, Statement},
+    ast::{Expression, Literal, Prefix, Program, Statement},
     object::Object,
 };
 
@@ -30,6 +30,8 @@ impl Evaluator {
     fn eval_expression(&mut self, expression: Expression) -> Option<Object> {
         match expression {
             Expression::Literal(literal) => Some(self.eval_literal(literal)),
+            Expression::Prefix(prefix, right) => self.eval_prefix_expression(prefix, *right),
+
             _ => None,
         }
     }
@@ -38,6 +40,23 @@ impl Evaluator {
         match literal {
             Literal::Int(num) => Object::Int(num),
             Literal::Boolean(boolean) => Object::Boolean(boolean),
+        }
+    }
+
+    fn eval_prefix_expression(&mut self, prefix: Prefix, right: Expression) -> Option<Object> {
+        let right = self.eval_expression(right)?;
+
+        match prefix {
+            Prefix::Not => Some(self.eval_not_operator_expression(right)),
+            _ => Some(Object::Null),
+        }
+    }
+
+    fn eval_not_operator_expression(&mut self, right: Object) -> Object {
+        match right {
+            Object::Boolean(boolean) => Object::Boolean(!boolean),
+            Object::Null => Object::Boolean(true),
+            _ => Object::Boolean(false),
         }
     }
 }
@@ -71,6 +90,22 @@ mod tests {
         let tests = vec![
             ("true", Some(Object::Boolean(true))),
             ("false", Some(Object::Boolean(false))),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
+    }
+
+    #[test]
+    fn eval_not_operator() {
+        let tests = vec![
+            ("!true", Some(Object::Boolean(false))),
+            ("!false", Some(Object::Boolean(true))),
+            ("!5", Some(Object::Boolean(false))),
+            ("!!true", Some(Object::Boolean(true))),
+            ("!!false", Some(Object::Boolean(false))),
+            ("!!5", Some(Object::Boolean(true))),
         ];
 
         for (input, expected) in tests {
