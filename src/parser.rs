@@ -153,6 +153,10 @@ impl<'a> Parser<'a> {
                     self.next_token();
                     left = self.parse_infix_expression(left)?;
                 }
+                Token::LeftParen => {
+                    self.next_token();
+                    left = self.parse_call_expression(left)?;
+                }
                 _ => return Some(left),
             }
         }
@@ -326,6 +330,41 @@ impl<'a> Parser<'a> {
         Some(Expression::Infix(Box::new(left), infix, Box::new(right)))
     }
 
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        let arguments = self.parse_call_arguments()?;
+
+        Some(Expression::Call {
+            function: Box::new(function),
+            arguments,
+        })
+    }
+
+    fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
+        let mut arguments = Vec::new();
+
+        if self.peek_token_is(Token::RightParen) {
+            self.next_token();
+            return Some(arguments);
+        }
+
+        self.next_token();
+
+        arguments.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek_token_is(Token::Comma) {
+            self.next_token();
+            self.next_token();
+
+            arguments.push(self.parse_expression(Precedence::Lowest)?);
+        }
+
+        if !self.expect_peek(Token::RightParen) {
+            return None;
+        }
+
+        Some(arguments)
+    }
+
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
@@ -377,6 +416,7 @@ impl<'a> Parser<'a> {
             Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Slash | Token::Asterisk => Precedence::Product,
+            Token::LeftParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -1014,5 +1054,87 @@ mod tests {
                 ))]
             })]
         )
+    }
+
+    #[test]
+    fn parse_call_expressions() {
+        let input = "add(1, 2 * 3, 4 + 5)";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::Call {
+                function: Box::new(Expression::Identifier(Identifier(String::from("add")))),
+                arguments: vec![
+                    Expression::Literal(Literal::Int(1)),
+                    Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(2))),
+                        Infix::Multiply,
+                        Box::new(Expression::Literal(Literal::Int(3))),
+                    ),
+                    Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(4))),
+                        Infix::Plus,
+                        Box::new(Expression::Literal(Literal::Int(5))),
+                    )
+                ]
+            })]
+        )
+    }
+
+    #[test]
+    fn parse_call_expression_arguments() {
+        let tests = vec![
+            (
+                "add();",
+                Expression::Identifier(Identifier(String::from("add"))),
+                vec![],
+            ),
+            (
+                "add(1);",
+                Expression::Identifier(Identifier(String::from("add"))),
+                vec![Expression::Literal(Literal::Int(1))],
+            ),
+            (
+                "add(1, 2 * 3, 4 + 5);",
+                Expression::Identifier(Identifier(String::from("add"))),
+                vec![
+                    Expression::Literal(Literal::Int(1)),
+                    Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(2))),
+                        Infix::Multiply,
+                        Box::new(Expression::Literal(Literal::Int(3))),
+                    ),
+                    Expression::Infix(
+                        Box::new(Expression::Literal(Literal::Int(4))),
+                        Infix::Plus,
+                        Box::new(Expression::Literal(Literal::Int(5))),
+                    ),
+                ],
+            ),
+        ];
+
+        for (input, expected_identifier, expected_args) in tests {
+            let lexer = Lexer::new(input);
+
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            check_parser_errors(parser);
+
+            assert_eq!(
+                program,
+                vec![Statement::Expression(Expression::Call {
+                    function: Box::new(expected_identifier),
+                    arguments: expected_args,
+                })]
+            )
+        }
     }
 }
