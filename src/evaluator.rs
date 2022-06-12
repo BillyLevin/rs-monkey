@@ -63,25 +63,28 @@ impl Evaluator {
         let left = self.eval_expression(left)?;
         let right = self.eval_expression(right)?;
 
-        let left_val = match left {
-            Object::Int(num) => num,
-            _ => return None,
-        };
+        match left {
+            Object::Int(left_val) => {
+                if let Object::Int(right_val) = right {
+                    Some(self.eval_integer_infix_expression(left_val, infix, right_val))
+                } else {
+                    None
+                }
+            }
+            _ => todo!(),
+        }
+    }
 
-        let right_val = match right {
-            Object::Int(num) => num,
-            _ => return None,
-        };
-
+    fn eval_integer_infix_expression(&mut self, left: i64, infix: Infix, right: i64) -> Object {
         match infix {
-            Infix::Plus => Some(Object::Int(left_val + right_val)),
-            Infix::Minus => Some(Object::Int(left_val - right_val)),
-            Infix::Multiply => Some(Object::Int(left_val * right_val)),
-            Infix::Divide => Some(Object::Int(left_val / right_val)),
-            Infix::LessThan => Some(Object::Boolean(left_val < right_val)),
-            Infix::GreaterThan => Some(Object::Boolean(left_val > right_val)),
-            Infix::Equal => Some(Object::Boolean(left_val == right_val)),
-            Infix::NotEqual => Some(Object::Boolean(left_val != right_val)),
+            Infix::Plus => Object::Int(left + right),
+            Infix::Minus => Object::Int(left - right),
+            Infix::Multiply => Object::Int(left * right),
+            Infix::Divide => Object::Int(left / right),
+            Infix::LessThan => Object::Boolean(left < right),
+            Infix::GreaterThan => Object::Boolean(left > right),
+            Infix::Equal => Object::Boolean(left == right),
+            Infix::NotEqual => Object::Boolean(left != right),
         }
     }
 
