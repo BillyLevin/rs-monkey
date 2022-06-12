@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Literal, Prefix, Program, Statement},
+    ast::{Expression, Infix, Literal, Prefix, Program, Statement},
     object::Object,
 };
 
@@ -31,7 +31,9 @@ impl Evaluator {
         match expression {
             Expression::Literal(literal) => Some(self.eval_literal(literal)),
             Expression::Prefix(prefix, right) => self.eval_prefix_expression(prefix, *right),
-
+            Expression::Infix(left, infix, right) => {
+                self.eval_infix_expression(*left, infix, *right)
+            }
             _ => None,
         }
     }
@@ -49,6 +51,34 @@ impl Evaluator {
         match prefix {
             Prefix::Not => Some(self.eval_not_operator_expression(right)),
             Prefix::Minus => Some(self.eval_minus_operator_expression(right)),
+        }
+    }
+
+    fn eval_infix_expression(
+        &mut self,
+        left: Expression,
+        infix: Infix,
+        right: Expression,
+    ) -> Option<Object> {
+        let left = self.eval_expression(left)?;
+        let right = self.eval_expression(right)?;
+
+        let left_val = match left {
+            Object::Int(num) => num,
+            _ => return None,
+        };
+
+        let right_val = match right {
+            Object::Int(num) => num,
+            _ => return None,
+        };
+
+        match infix {
+            Infix::Plus => Some(Object::Int(left_val + right_val)),
+            Infix::Minus => Some(Object::Int(left_val - right_val)),
+            Infix::Multiply => Some(Object::Int(left_val * right_val)),
+            Infix::Divide => Some(Object::Int(left_val / right_val)),
+            _ => Some(Object::Null),
         }
     }
 
@@ -90,6 +120,17 @@ mod tests {
             ("10", Some(Object::Int(10))),
             ("-5", Some(Object::Int(-5))),
             ("-10", Some(Object::Int(-10))),
+            ("5 + 5 + 5 + 5 - 10", Some(Object::Int(10))),
+            ("2 * 2 * 2 * 2 * 2", Some(Object::Int(32))),
+            ("-50 + 100 + -50", Some(Object::Int(0))),
+            ("5 * 2 + 10", Some(Object::Int(20))),
+            ("5 + 2 * 10", Some(Object::Int(25))),
+            ("20 + 2 * -10", Some(Object::Int(0))),
+            ("50 / 2 * 2 + 10", Some(Object::Int(60))),
+            ("2 * (5 + 10)", Some(Object::Int(30))),
+            ("3 * 3 * 3 + 10", Some(Object::Int(37))),
+            ("3 * (3 * 3) + 10", Some(Object::Int(37))),
+            ("(5 + 10 * 2 + 15 / 3) * 2 + -10", Some(Object::Int(50))),
         ];
 
         for (input, expected) in tests {
