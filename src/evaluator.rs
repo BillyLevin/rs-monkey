@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Infix, Literal, Prefix, Program, Statement},
+    ast::{BlockStatement, Expression, Infix, Literal, Prefix, Program, Statement},
     object::Object,
 };
 
@@ -34,6 +34,11 @@ impl Evaluator {
             Expression::Infix(left, infix, right) => {
                 self.eval_infix_expression(*left, infix, *right)
             }
+            Expression::If {
+                condition,
+                consequence,
+                alternative,
+            } => self.eval_if_else_expression(*condition, consequence, alternative),
             _ => None,
         }
     }
@@ -103,6 +108,25 @@ impl Evaluator {
         }
     }
 
+    fn eval_if_else_expression(
+        &mut self,
+        condition: Expression,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    ) -> Option<Object> {
+        let condition = self.eval_expression(condition)?;
+
+        if Self::is_truthy(condition) {
+            return self.eval(consequence);
+        } else {
+            if let Some(alternative) = alternative {
+                return self.eval(alternative);
+            } else {
+                return Some(Object::Null);
+            }
+        }
+    }
+
     fn eval_not_operator_expression(&mut self, right: Object) -> Object {
         match right {
             Object::Boolean(boolean) => Object::Boolean(!boolean),
@@ -115,6 +139,13 @@ impl Evaluator {
         match right {
             Object::Int(num) => Object::Int(-num),
             _ => Object::Null,
+        }
+    }
+
+    fn is_truthy(object: Object) -> bool {
+        match object {
+            Object::Boolean(false) | Object::Null => false,
+            _ => true,
         }
     }
 }
@@ -197,6 +228,23 @@ mod tests {
             ("!!true", Some(Object::Boolean(true))),
             ("!!false", Some(Object::Boolean(false))),
             ("!!5", Some(Object::Boolean(true))),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
+    }
+
+    #[test]
+    fn eval_if_else_expressions() {
+        let tests = vec![
+            ("if (true) { 10 }", Some(Object::Int(10))),
+            ("if (false) { 10 }", Some(Object::Null)),
+            ("if (1) { 10 }", Some(Object::Int(10))),
+            ("if (1 < 2) { 10 }", Some(Object::Int(10))),
+            ("if (1 > 2) { 10 }", Some(Object::Null)),
+            ("if (1 > 2) { 10 } else { 20 }", Some(Object::Int(20))),
+            ("if (1 < 2) { 10 } else { 20 }", Some(Object::Int(10))),
         ];
 
         for (input, expected) in tests {
