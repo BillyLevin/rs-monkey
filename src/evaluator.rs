@@ -14,7 +14,10 @@ impl Evaluator {
         let mut result = None;
 
         for statement in program {
-            result = self.eval_statement(statement);
+            match self.eval_statement(statement) {
+                Some(Object::ReturnValue(value)) => return Some(*value),
+                evaluated => result = evaluated,
+            }
         }
 
         result
@@ -23,8 +26,22 @@ impl Evaluator {
     fn eval_statement(&mut self, statement: Statement) -> Option<Object> {
         match statement {
             Statement::Expression(expression) => self.eval_expression(expression),
+            Statement::Return(expression) => self.eval_return(expression),
             _ => None,
         }
+    }
+
+    fn eval_block_statement(&mut self, statements: BlockStatement) -> Option<Object> {
+        let mut result = None;
+
+        for statement in statements {
+            match self.eval_statement(statement) {
+                Some(Object::ReturnValue(value)) => return Some(Object::ReturnValue(value)),
+                evaluated => result = evaluated,
+            }
+        }
+
+        result
     }
 
     fn eval_expression(&mut self, expression: Expression) -> Option<Object> {
@@ -41,6 +58,12 @@ impl Evaluator {
             } => self.eval_if_else_expression(*condition, consequence, alternative),
             _ => None,
         }
+    }
+
+    fn eval_return(&mut self, expression: Expression) -> Option<Object> {
+        let evaluated = self.eval_expression(expression)?;
+
+        Some(Object::ReturnValue(Box::new(evaluated)))
     }
 
     fn eval_literal(&mut self, literal: Literal) -> Object {
@@ -117,10 +140,10 @@ impl Evaluator {
         let condition = self.eval_expression(condition)?;
 
         if Self::is_truthy(condition) {
-            return self.eval(consequence);
+            return self.eval_block_statement(consequence);
         } else {
             if let Some(alternative) = alternative {
-                return self.eval(alternative);
+                return self.eval_block_statement(alternative);
             } else {
                 return Some(Object::Null);
             }
@@ -245,6 +268,31 @@ mod tests {
             ("if (1 > 2) { 10 }", Some(Object::Null)),
             ("if (1 > 2) { 10 } else { 20 }", Some(Object::Int(20))),
             ("if (1 < 2) { 10 } else { 20 }", Some(Object::Int(10))),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
+    }
+
+    #[test]
+    fn eval_return_statements() {
+        let tests = vec![
+            ("return 10;", Some(Object::Int(10))),
+            ("return 10; 9;", Some(Object::Int(10))),
+            ("return 2 * 5; 9;", Some(Object::Int(10))),
+            ("9; return 2 * 5; 9;", Some(Object::Int(10))),
+            (
+                "
+            if (10 > 1) {
+                if (10 > 1) {
+                    return 10;
+                }
+                return 1;
+            }
+            ",
+                Some(Object::Int(10)),
+            ),
         ];
 
         for (input, expected) in tests {
