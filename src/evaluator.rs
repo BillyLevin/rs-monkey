@@ -16,6 +16,7 @@ impl Evaluator {
         for statement in program {
             match self.eval_statement(statement) {
                 Some(Object::ReturnValue(value)) => return Some(*value),
+                Some(Object::Error(message)) => return Some(Object::Error(message)),
                 evaluated => result = evaluated,
             }
         }
@@ -37,6 +38,7 @@ impl Evaluator {
         for statement in statements {
             match self.eval_statement(statement) {
                 Some(Object::ReturnValue(value)) => return Some(Object::ReturnValue(value)),
+                Some(Object::Error(message)) => return Some(Object::Error(message)),
                 evaluated => result = evaluated,
             }
         }
@@ -63,7 +65,11 @@ impl Evaluator {
     fn eval_return(&mut self, expression: Expression) -> Option<Object> {
         let evaluated = self.eval_expression(expression)?;
 
-        Some(Object::ReturnValue(Box::new(evaluated)))
+        if Self::is_error(&evaluated) {
+            Some(evaluated)
+        } else {
+            Some(Object::ReturnValue(Box::new(evaluated)))
+        }
     }
 
     fn eval_literal(&mut self, literal: Literal) -> Object {
@@ -75,6 +81,10 @@ impl Evaluator {
 
     fn eval_prefix_expression(&mut self, prefix: Prefix, right: Expression) -> Option<Object> {
         let right = self.eval_expression(right)?;
+
+        if Self::is_error(&right) {
+            return Some(right);
+        }
 
         match prefix {
             Prefix::Not => Some(self.eval_not_operator_expression(right)),
@@ -89,24 +99,42 @@ impl Evaluator {
         right: Expression,
     ) -> Option<Object> {
         let left = self.eval_expression(left)?;
+
+        if Self::is_error(&left) {
+            return Some(left);
+        }
+
         let right = self.eval_expression(right)?;
+
+        if Self::is_error(&right) {
+            return Some(right);
+        }
 
         match left {
             Object::Int(left_val) => {
                 if let Object::Int(right_val) = right {
                     Some(self.eval_integer_infix_expression(left_val, infix, right_val))
                 } else {
-                    None
+                    Some(Self::new_error(format!(
+                        "type mismatch: {} {} {}",
+                        left, infix, right,
+                    )))
                 }
             }
             Object::Boolean(left_val) => {
                 if let Object::Boolean(right_val) = right {
                     Some(self.eval_boolean_infix_expression(left_val, infix, right_val))
                 } else {
-                    None
+                    Some(Self::new_error(format!(
+                        "type mismatch: {} {} {}",
+                        left, infix, right,
+                    )))
                 }
             }
-            _ => todo!(),
+            _ => Some(Self::new_error(format!(
+                "unknown operator: {} {} {}",
+                left, infix, right
+            ))),
         }
     }
 
@@ -127,7 +155,7 @@ impl Evaluator {
         match infix {
             Infix::Equal => Object::Boolean(left == right),
             Infix::NotEqual => Object::Boolean(left != right),
-            _ => Object::Null,
+            _ => Self::new_error(format!("unknown operator: {} {} {}", left, infix, right)),
         }
     }
 
@@ -138,6 +166,10 @@ impl Evaluator {
         alternative: Option<BlockStatement>,
     ) -> Option<Object> {
         let condition = self.eval_expression(condition)?;
+
+        if Self::is_error(&condition) {
+            return Some(condition);
+        }
 
         if Self::is_truthy(condition) {
             return self.eval_block_statement(consequence);
@@ -161,7 +193,7 @@ impl Evaluator {
     fn eval_minus_operator_expression(&mut self, right: Object) -> Object {
         match right {
             Object::Int(num) => Object::Int(-num),
-            _ => Object::Null,
+            _ => Self::new_error(format!("unknown operator: -{}", right)),
         }
     }
 
@@ -169,6 +201,17 @@ impl Evaluator {
         match object {
             Object::Boolean(false) | Object::Null => false,
             _ => true,
+        }
+    }
+
+    fn new_error(message: String) -> Object {
+        Object::Error(message)
+    }
+
+    fn is_error(object: &Object) -> bool {
+        match object {
+            Object::Error(_) => true,
+            _ => false,
         }
     }
 }
@@ -292,6 +335,40 @@ mod tests {
             }
             ",
                 Some(Object::Int(10)),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
+    }
+
+    #[test]
+    fn error_handling() {
+        let tests = vec![
+            (
+                "5 + true",
+                Some(Object::Error(String::from("type mismatch: 5 + true"))),
+            ),
+            (
+                "5 + true; 5;",
+                Some(Object::Error(String::from("type mismatch: 5 + true"))),
+            ),
+            (
+                "-true",
+                Some(Object::Error(String::from("unknown operator: -true"))),
+            ),
+            (
+                "5; true + false; 5;",
+                Some(Object::Error(String::from(
+                    "unknown operator: true + false",
+                ))),
+            ),
+            (
+                "if (10 > 1) { true + false; }",
+                Some(Object::Error(String::from(
+                    "unknown operator: true + false",
+                ))),
             ),
         ];
 

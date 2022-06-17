@@ -55,3 +55,18 @@ pub enum Infix {
     Equal,
     NotEqual,
 }
+
+impl std::fmt::Display for Infix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Infix::Plus => write!(f, "+"),
+            Infix::Minus => write!(f, "-"),
+            Infix::Multiply => write!(f, "*"),
+            Infix::Divide => write!(f, "/"),
+            Infix::GreaterThan => write!(f, ">"),
+            Infix::LessThan => write!(f, "<"),
+            Infix::Equal => write!(f, "=="),
+            Infix::NotEqual => write!(f, "!="),
+        }
+    }
+}
