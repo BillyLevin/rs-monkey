@@ -1,13 +1,18 @@
 use crate::{
-    ast::{BlockStatement, Expression, Infix, Literal, Prefix, Program, Statement},
+    ast::{BlockStatement, Expression, Identifier, Infix, Literal, Prefix, Program, Statement},
+    environment::Environment,
     object::Object,
 };
 
-pub struct Evaluator;
+pub struct Evaluator {
+    environment: Environment,
+}
 
 impl Evaluator {
     pub fn new() -> Self {
-        Evaluator {}
+        Evaluator {
+            environment: Environment::new(),
+        }
     }
 
     pub fn eval(&mut self, program: Program) -> Option<Object> {
@@ -28,7 +33,17 @@ impl Evaluator {
         match statement {
             Statement::Expression(expression) => self.eval_expression(expression),
             Statement::Return(expression) => self.eval_return(expression),
-            _ => None,
+            Statement::Let(identifier, expression) => {
+                let value = self.eval_expression(expression)?;
+
+                if Self::is_error(&value) {
+                    return Some(value);
+                } else {
+                    let Identifier(name) = identifier;
+                    self.environment.set(name, value);
+                    return None;
+                }
+            }
         }
     }
 
@@ -58,6 +73,7 @@ impl Evaluator {
                 consequence,
                 alternative,
             } => self.eval_if_else_expression(*condition, consequence, alternative),
+            Expression::Identifier(identifier) => self.eval_identifier_expression(identifier),
             _ => None,
         }
     }
@@ -179,6 +195,18 @@ impl Evaluator {
             } else {
                 return Some(Object::Null);
             }
+        }
+    }
+
+    fn eval_identifier_expression(&mut self, identifier: Identifier) -> Option<Object> {
+        let Identifier(name) = identifier;
+
+        let value = self.environment.get(name.clone());
+
+        if let Some(value) = value {
+            Some(value)
+        } else {
+            Some(Self::new_error(format!("identifier not found: {}", name)))
         }
     }
 
@@ -369,6 +397,27 @@ mod tests {
                 Some(Object::Error(String::from(
                     "unknown operator: true + false",
                 ))),
+            ),
+            (
+                "foobar;",
+                Some(Object::Error(String::from("identifier not found: foobar"))),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
+    }
+
+    #[test]
+    fn eval_let_statements() {
+        let tests = vec![
+            ("let a = 5; a;", Some(Object::Int(5))),
+            ("let a = 5 * 5; a;", Some(Object::Int(25))),
+            ("let a = 5; let b = a; b;", Some(Object::Int(5))),
+            (
+                "let a = 5; let b = a; let c = a + b + 5; c;",
+                Some(Object::Int(15)),
             ),
         ];
 
