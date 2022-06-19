@@ -1,3 +1,8 @@
+use crate::{
+    ast::{BlockStatement, Identifier},
+    environment::Environment,
+};
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Int(i64),
@@ -5,6 +10,11 @@ pub enum Object {
     Null,
     ReturnValue(Box<Object>),
     Error(String),
+    Function {
+        parameters: Vec<Identifier>,
+        body: BlockStatement,
+        environment: Environment,
+    },
 }
 
 impl std::fmt::Display for Object {
@@ -15,6 +25,15 @@ impl std::fmt::Display for Object {
             Object::Null => write!(f, "null"),
             Object::ReturnValue(object) => write!(f, "{}", object),
             Object::Error(message) => write!(f, "{}", message),
+            Object::Function { parameters, .. } => {
+                let parameters = parameters
+                    .iter()
+                    .map(|param| format!("{}", param))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                write!(f, "fn({}) {{}}", parameters)
+            }
         }
     }
 }

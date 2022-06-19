@@ -1,14 +1,14 @@
 pub type Program = Vec<Statement>;
 pub type BlockStatement = Vec<Statement>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let(Identifier, Expression),
     Return(Expression),
     Expression(Expression),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Literal(Literal),
     Identifier(Identifier),
@@ -29,22 +29,22 @@ pub enum Expression {
     },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
     Int(i64),
     Boolean(bool),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Identifier(pub String);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Prefix {
     Not,
     Minus,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Infix {
     Plus,
     Minus,
@@ -68,5 +68,11 @@ impl std::fmt::Display for Infix {
             Infix::Equal => write!(f, "=="),
             Infix::NotEqual => write!(f, "!="),
         }
+    }
+}
+
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

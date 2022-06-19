@@ -74,6 +74,11 @@ impl Evaluator {
                 alternative,
             } => self.eval_if_else_expression(*condition, consequence, alternative),
             Expression::Identifier(identifier) => self.eval_identifier_expression(identifier),
+            Expression::Function { parameters, body } => Some(Object::Function {
+                parameters,
+                body,
+                environment: self.environment.clone(),
+            }),
             _ => None,
         }
     }
@@ -424,5 +429,21 @@ mod tests {
         for (input, expected) in tests {
             assert_eq!(eval(input), expected);
         }
+    }
+
+    #[test]
+    fn eval_function_definitions() {
+        assert_eq!(
+            eval("fn(x) { x + 2; }"),
+            Some(Object::Function {
+                parameters: vec![Identifier(String::from("x"))],
+                body: vec![Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Identifier(Identifier(String::from("x")))),
+                    Infix::Plus,
+                    Box::new(Expression::Literal(Literal::Int(2)))
+                ))],
+                environment: Environment::new()
+            })
+        )
     }
 }
