@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     ast::{BlockStatement, Identifier},
     environment::Environment,
@@ -13,7 +15,7 @@ pub enum Object {
     Function {
         parameters: Vec<Identifier>,
         body: BlockStatement,
-        environment: Environment,
+        environment: Rc<RefCell<Environment>>,
     },
 }
 
