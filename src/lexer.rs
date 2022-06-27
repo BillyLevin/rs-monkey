@@ -55,6 +55,7 @@ impl<'a> Lexer<'a> {
             b';' => Token::SemiColon,
             b'a'..=b'z' | b'A'..=b'Z' => return self.read_identifier(),
             b'0'..=b'9' => return self.read_number(),
+            b'"' => return self.read_string(),
             0 => Token::Eof,
             _ => Token::Illegal,
         };
@@ -130,6 +131,25 @@ impl<'a> Lexer<'a> {
 
         Token::Int(number.parse().unwrap())
     }
+
+    fn read_string(&mut self) -> Token {
+        self.read_char();
+
+        let position = self.position;
+
+        loop {
+            match self.ch {
+                b'"' | 0 => break,
+                _ => self.read_char(),
+            }
+        }
+
+        let string = &self.input[position..self.position];
+
+        self.read_char();
+
+        Token::String(string.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -158,6 +178,8 @@ mod tests {
 
         10 == 10;
         10 != 9;
+        \"foobar\";
+        \"foo bar\";
         ";
 
         let mut lexer = Lexer::new(input);
@@ -235,6 +257,10 @@ mod tests {
             Token::Int(10),
             Token::NotEqual,
             Token::Int(9),
+            Token::SemiColon,
+            Token::String(String::from("foobar")),
+            Token::SemiColon,
+            Token::String(String::from("foo bar")),
             Token::SemiColon,
             Token::Eof,
         ];
