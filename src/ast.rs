@@ -33,6 +33,7 @@ pub enum Expression {
 pub enum Literal {
     Int(i64),
     Boolean(bool),
+    String(String),
 }
 
 #[derive(Debug, PartialEq, Clone)]

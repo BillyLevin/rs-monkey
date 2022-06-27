@@ -102,6 +102,7 @@ impl Evaluator {
         match literal {
             Literal::Int(num) => Object::Int(num),
             Literal::Boolean(boolean) => Object::Boolean(boolean),
+            _ => todo!(),
         }
     }
 

@@ -176,6 +176,7 @@ impl<'a> Parser<'a> {
             Token::LeftParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_literal_expression(),
+            Token::String(_) => Some(self.parse_string_literal()),
             _ => None,
         }
     }
@@ -196,6 +197,13 @@ impl<'a> Parser<'a> {
     fn parse_integer_literal(&mut self) -> Expression {
         match self.current_token {
             Token::Int(num) => Expression::Literal(Literal::Int(num)),
+            _ => unreachable!(),
+        }
+    }
+
+    fn parse_string_literal(&mut self) -> Expression {
+        match self.current_token {
+            Token::String(ref string) => Expression::Literal(Literal::String(string.to_string())),
             _ => unreachable!(),
         }
     }
@@ -1181,7 +1189,6 @@ mod tests {
             })]
         )
     }
-
     #[test]
     fn parse_call_expression_arguments() {
         let tests = vec![
@@ -1230,5 +1237,24 @@ mod tests {
                 })]
             )
         }
+    }
+
+    #[test]
+    fn parse_string_literal_expressions() {
+        let input = "\"hello world\"";
+
+        let lexer = Lexer::new(input);
+
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::Literal(Literal::String(
+                String::from("hello world")
+            )))]
+        );
     }
 }
