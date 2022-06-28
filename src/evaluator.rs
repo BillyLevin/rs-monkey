@@ -108,7 +108,7 @@ impl Evaluator {
         match literal {
             Literal::Int(num) => Object::Int(num),
             Literal::Boolean(boolean) => Object::Boolean(boolean),
-            _ => todo!(),
+            Literal::String(string) => Object::String(string),
         }
     }
 
@@ -164,6 +164,16 @@ impl Evaluator {
                     )))
                 }
             }
+            Object::String(ref left_val) => {
+                if let Object::String(right_val) = right {
+                    Some(self.eval_string_infix_expression(left_val.clone(), infix, right_val))
+                } else {
+                    Some(Self::new_error(format!(
+                        "type mismatch: {} {} {}",
+                        left, infix, right,
+                    )))
+                }
+            }
             _ => Some(Self::new_error(format!(
                 "unknown operator: {} {} {}",
                 left, infix, right
@@ -188,6 +198,18 @@ impl Evaluator {
         match infix {
             Infix::Equal => Object::Boolean(left == right),
             Infix::NotEqual => Object::Boolean(left != right),
+            _ => Self::new_error(format!("unknown operator: {} {} {}", left, infix, right)),
+        }
+    }
+
+    fn eval_string_infix_expression(
+        &mut self,
+        left: String,
+        infix: Infix,
+        right: String,
+    ) -> Object {
+        match infix {
+            Infix::Plus => Object::String(format!("{}{}", left, right)),
             _ => Self::new_error(format!("unknown operator: {} {} {}", left, infix, right)),
         }
     }
@@ -465,6 +487,12 @@ mod tests {
                 "foobar;",
                 Some(Object::Error(String::from("identifier not found: foobar"))),
             ),
+            (
+                "\"Hello\" - \"World\"",
+                Some(Object::Error(String::from(
+                    "unknown operator: Hello - World",
+                ))),
+            ),
         ];
 
         for (input, expected) in tests {
@@ -548,5 +576,25 @@ mod tests {
 ";
 
         assert_eq!(eval(input), Some(Object::Int(4)));
+    }
+
+    #[test]
+    fn eval_string_literal_expressions() {
+        let input = "\"Hello World!\"";
+
+        assert_eq!(
+            eval(input),
+            Some(Object::String(String::from("Hello World!")))
+        );
+    }
+
+    #[test]
+    fn eval_string_concatenation() {
+        let input = "\"Hello\" + \" \" + \"World!\"";
+
+        assert_eq!(
+            eval(input),
+            Some(Object::String(String::from("Hello World!")))
+        );
     }
 }

@@ -17,6 +17,7 @@ pub enum Object {
         body: BlockStatement,
         environment: Rc<RefCell<Environment>>,
     },
+    String(String),
 }
 
 impl std::fmt::Display for Object {
@@ -36,6 +37,7 @@ impl std::fmt::Display for Object {
 
                 write!(f, "fn({}) {{}}", parameters)
             }
+            Object::String(string) => write!(f, "{}", string),
         }
     }
 }
