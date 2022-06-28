@@ -8,31 +8,25 @@ const PROMPT: &str = ">> ";
 impl Repl {
     pub fn start() {
         let mut rl = Editor::<()>::new();
+        let mut evaluator = Evaluator::new();
 
-        loop {
-            match rl.readline(PROMPT) {
-                Ok(line) => {
-                    let lexer = Lexer::new(&line);
-                    let mut parser = Parser::new(lexer);
+        while let Ok(line) = rl.readline(PROMPT) {
+            let lexer = Lexer::new(&line);
+            let mut parser = Parser::new(lexer);
 
-                    let program = parser.parse_program();
-                    let errors = parser.errors();
+            let program = parser.parse_program();
+            let errors = parser.errors();
 
-                    if errors.len() != 0 {
-                        for error in errors {
-                            println!("\t{}", error);
-                        }
-
-                        continue;
-                    }
-
-                    let mut evaluator = Evaluator::new();
-
-                    if let Some(evaluated) = evaluator.eval(program) {
-                        println!("{}", evaluated);
-                    }
+            if !errors.is_empty() {
+                for error in errors {
+                    println!("\t{}", error);
                 }
-                _ => break,
+
+                continue;
+            }
+
+            if let Some(evaluated) = evaluator.eval(program) {
+                println!("{}", evaluated);
             }
         }
     }

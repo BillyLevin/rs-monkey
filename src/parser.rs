@@ -48,9 +48,8 @@ impl<'a> Parser<'a> {
         let mut program = Vec::new();
 
         loop {
-            match self.current_token {
-                Token::Eof => break,
-                _ => (),
+            if let Token::Eof = self.current_token {
+                break;
             }
 
             if let Some(statement) = self.parse_statement() {
@@ -219,7 +218,7 @@ impl<'a> Parser<'a> {
 
         let right = self.parse_expression(Precedence::Prefix)?;
 
-        return Some(Expression::Prefix(operator, Box::new(right)));
+        Some(Expression::Prefix(operator, Box::new(right)))
     }
 
     fn parse_boolean_literal_expression(&mut self) -> Expression {
@@ -440,7 +439,7 @@ mod tests {
     fn check_parser_errors(parser: Parser) {
         let errors = parser.errors();
 
-        if errors.len() == 0 {
+        if errors.is_empty() {
             return;
         }
 

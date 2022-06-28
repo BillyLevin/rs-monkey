@@ -10,6 +10,12 @@ pub struct Evaluator {
     environment: Rc<RefCell<Environment>>,
 }
 
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Evaluator {
     pub fn new() -> Self {
         Evaluator {
@@ -39,11 +45,11 @@ impl Evaluator {
                 let value = self.eval_expression(expression)?;
 
                 if Self::is_error(&value) {
-                    return Some(value);
+                    Some(value)
                 } else {
                     let Identifier(name) = identifier;
                     self.environment.borrow_mut().set(name, value);
-                    return None;
+                    None
                 }
             }
         }
@@ -199,13 +205,11 @@ impl Evaluator {
         }
 
         if Self::is_truthy(condition) {
-            return self.eval_block_statement(consequence);
+            self.eval_block_statement(consequence)
+        } else if let Some(alternative) = alternative {
+            self.eval_block_statement(alternative)
         } else {
-            if let Some(alternative) = alternative {
-                return self.eval_block_statement(alternative);
-            } else {
-                return Some(Object::Null);
-            }
+            Some(Object::Null)
         }
     }
 
@@ -291,10 +295,7 @@ impl Evaluator {
     }
 
     fn is_truthy(object: Object) -> bool {
-        match object {
-            Object::Boolean(false) | Object::Null => false,
-            _ => true,
-        }
+        !matches!(object, Object::Boolean(false) | Object::Null)
     }
 
     fn new_error(message: String) -> Object {
@@ -302,10 +303,7 @@ impl Evaluator {
     }
 
     fn is_error(object: &Object) -> bool {
-        match object {
-            Object::Error(_) => true,
-            _ => false,
-        }
+        matches!(object, Object::Error(_))
     }
 }
 

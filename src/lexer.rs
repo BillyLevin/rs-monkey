@@ -62,15 +62,12 @@ impl<'a> Lexer<'a> {
 
         self.read_char();
 
-        return token;
+        token
     }
 
     fn skip_whitespace(&mut self) {
-        loop {
-            match self.ch {
-                b' ' | b'\t' | b'\n' | b'\r' => self.read_char(),
-                _ => break,
-            }
+        while let b' ' | b'\t' | b'\n' | b'\r' = self.ch {
+            self.read_char();
         }
     }
 
@@ -96,11 +93,8 @@ impl<'a> Lexer<'a> {
     fn read_identifier(&mut self) -> Token {
         let position = self.position;
 
-        loop {
-            match self.ch {
-                b'a'..=b'z' | b'A'..=b'Z' => self.read_char(),
-                _ => break,
-            }
+        while let b'a'..=b'z' | b'A'..=b'Z' = self.ch {
+            self.read_char();
         }
 
         let identifier = &self.input[position..self.position];
@@ -120,11 +114,8 @@ impl<'a> Lexer<'a> {
     fn read_number(&mut self) -> Token {
         let position = self.position;
 
-        loop {
-            match self.ch {
-                b'0'..=b'9' => self.read_char(),
-                _ => break,
-            }
+        while let b'0'..=b'9' = self.ch {
+            self.read_char();
         }
 
         let number = &self.input[position..self.position];
