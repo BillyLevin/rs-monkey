@@ -51,6 +51,8 @@ impl<'a> Lexer<'a> {
             b')' => Token::RightParen,
             b'{' => Token::LeftBrace,
             b'}' => Token::RightBrace,
+            b'[' => Token::LeftBracket,
+            b']' => Token::RightBracket,
             b',' => Token::Comma,
             b';' => Token::SemiColon,
             b'a'..=b'z' | b'A'..=b'Z' => return self.read_identifier(),
@@ -171,6 +173,7 @@ mod tests {
         10 != 9;
         \"foobar\";
         \"foo bar\";
+        [1, 2];
         ";
 
         let mut lexer = Lexer::new(input);
@@ -252,6 +255,12 @@ mod tests {
             Token::String(String::from("foobar")),
             Token::SemiColon,
             Token::String(String::from("foo bar")),
+            Token::SemiColon,
+            Token::LeftBracket,
+            Token::Int(1),
+            Token::Comma,
+            Token::Int(2),
+            Token::RightBracket,
             Token::SemiColon,
             Token::Eof,
         ];
