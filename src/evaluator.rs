@@ -109,6 +109,7 @@ impl Evaluator {
             Literal::Int(num) => Object::Int(num),
             Literal::Boolean(boolean) => Object::Boolean(boolean),
             Literal::String(string) => Object::String(string),
+            Literal::Array(_) => todo!(),
         }
     }
 

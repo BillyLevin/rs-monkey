@@ -34,6 +34,7 @@ pub enum Literal {
     Int(i64),
     Boolean(bool),
     String(String),
+    Array(Vec<Expression>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
