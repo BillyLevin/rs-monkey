@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::object::Object;
+use crate::{builtins::initialize_builtins, object::Object};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Environment {
@@ -26,6 +26,13 @@ impl Environment {
         Environment {
             store: HashMap::new(),
             outer: Some(outer),
+        }
+    }
+
+    pub fn new_with_builtins() -> Self {
+        Environment {
+            store: initialize_builtins(),
+            outer: None,
         }
     }
 

@@ -1,6 +1,7 @@
 use repl::Repl;
 
 pub mod ast;
+pub mod builtins;
 pub mod environment;
 pub mod evaluator;
 pub mod lexer;

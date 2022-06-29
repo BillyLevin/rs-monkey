@@ -18,7 +18,10 @@ pub enum Object {
         environment: Rc<RefCell<Environment>>,
     },
     String(String),
+    Builtin(BuiltInFunction),
 }
+
+pub type BuiltInFunction = fn(Vec<Object>) -> Object;
 
 impl std::fmt::Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,6 +41,7 @@ impl std::fmt::Display for Object {
                 write!(f, "fn({}) {{}}", parameters)
             }
             Object::String(string) => write!(f, "{}", string),
+            Object::Builtin(_) => write!(f, "builtin function"),
         }
     }
 }

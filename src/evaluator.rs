@@ -19,7 +19,7 @@ impl Default for Evaluator {
 impl Evaluator {
     pub fn new() -> Self {
         Evaluator {
-            environment: Rc::new(RefCell::new(Environment::new())),
+            environment: Rc::new(RefCell::new(Environment::new_with_builtins())),
         }
     }
 
@@ -260,6 +260,7 @@ impl Evaluator {
                 body,
                 environment,
             }) => (parameters, body, environment),
+            Some(Object::Builtin(function)) => return function(evaluated_arguments),
             Some(obj) => return Self::new_error(format!("not a function: {}", obj)),
             _ => return Object::Null,
         };
@@ -528,7 +529,7 @@ mod tests {
                     Infix::Plus,
                     Box::new(Expression::Literal(Literal::Int(2)))
                 ))],
-                environment: Rc::new(RefCell::new(Environment::new()))
+                environment: Rc::new(RefCell::new(Environment::new_with_builtins()))
             })
         )
     }
@@ -596,5 +597,30 @@ mod tests {
             eval(input),
             Some(Object::String(String::from("Hello World!")))
         );
+    }
+
+    #[test]
+    fn eval_builtin_functions() {
+        let tests = vec![
+            ("len(\"\")", Some(Object::Int(0))),
+            ("len(\"four\")", Some(Object::Int(4))),
+            ("len(\"hello world\")", Some(Object::Int(11))),
+            (
+                "len(1)",
+                Some(Object::Error(String::from(
+                    "argument to `len` not supported, got 1",
+                ))),
+            ),
+            (
+                "len(\"one\", \"two\")",
+                Some(Object::Error(String::from(
+                    "wrong number of arguments. got=2, want=1",
+                ))),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
     }
 }
