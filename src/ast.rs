@@ -27,6 +27,10 @@ pub enum Expression {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    Index {
+        left: Box<Expression>,
+        index: Box<Expression>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -91,6 +91,7 @@ impl Evaluator {
                 function,
                 arguments,
             } => Some(self.eval_call_expression(*function, arguments)),
+            Expression::Index { .. } => todo!(),
         }
     }
 

@@ -13,6 +13,7 @@ enum Precedence {
     Product,     // *
     Prefix,      // -X or !X
     Call,        // myFunction(x)
+    Index,       // array[index]
 }
 
 pub struct Parser<'a> {
@@ -158,6 +159,10 @@ impl<'a> Parser<'a> {
                 Token::LeftParen => {
                     self.next_token();
                     left = self.parse_call_expression(left)?;
+                }
+                Token::LeftBracket => {
+                    self.next_token();
+                    left = self.parse_index_expression(left)?;
                 }
                 _ => return Some(left),
             }
@@ -381,6 +386,21 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_index_expression(&mut self, left: Expression) -> Option<Expression> {
+        self.next_token();
+
+        let index = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(Token::RightBracket) {
+            return None;
+        }
+
+        Some(Expression::Index {
+            left: Box::new(left),
+            index: Box::new(index),
+        })
+    }
+
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
@@ -433,6 +453,7 @@ impl<'a> Parser<'a> {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Slash | Token::Asterisk => Precedence::Product,
             Token::LeftParen => Precedence::Call,
+            Token::LeftBracket => Precedence::Index,
             _ => Precedence::Lowest,
         }
     }
@@ -1071,6 +1092,63 @@ mod tests {
                     )],
                 }),
             ),
+            (
+                "a * [1, 2, 3, 4][b * c] * d",
+                Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                        Infix::Multiply,
+                        Box::new(Expression::Index {
+                            left: Box::new(Expression::Literal(Literal::Array(vec![
+                                Expression::Literal(Literal::Int(1)),
+                                Expression::Literal(Literal::Int(2)),
+                                Expression::Literal(Literal::Int(3)),
+                                Expression::Literal(Literal::Int(4)),
+                            ]))),
+                            index: Box::new(Expression::Infix(
+                                Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                                Infix::Multiply,
+                                Box::new(Expression::Identifier(Identifier(String::from("c")))),
+                            )),
+                        }),
+                    )),
+                    Infix::Multiply,
+                    Box::new(Expression::Identifier(Identifier(String::from("d")))),
+                )),
+            ),
+            (
+                "add(a * b[2], b[1], 2 * [1, 2][1])",
+                Statement::Expression(Expression::Call {
+                    function: Box::new(Expression::Identifier(Identifier(String::from("add")))),
+                    arguments: vec![
+                        Expression::Infix(
+                            Box::new(Expression::Identifier(Identifier(String::from("a")))),
+                            Infix::Multiply,
+                            Box::new(Expression::Index {
+                                left: Box::new(Expression::Identifier(Identifier(String::from(
+                                    "b",
+                                )))),
+                                index: Box::new(Expression::Literal(Literal::Int(2))),
+                            }),
+                        ),
+                        Expression::Index {
+                            left: Box::new(Expression::Identifier(Identifier(String::from("b")))),
+                            index: Box::new(Expression::Literal(Literal::Int(1))),
+                        },
+                        Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(2))),
+                            Infix::Multiply,
+                            Box::new(Expression::Index {
+                                left: Box::new(Expression::Literal(Literal::Array(vec![
+                                    Expression::Literal(Literal::Int(1)),
+                                    Expression::Literal(Literal::Int(2)),
+                                ]))),
+                                index: Box::new(Expression::Literal(Literal::Int(1))),
+                            }),
+                        ),
+                    ],
+                }),
+            ),
         ];
 
         for (input, expected) in tests {
@@ -1292,5 +1370,29 @@ mod tests {
                 ]
             )))]
         );
+    }
+
+    #[test]
+    fn parse_index_expressions() {
+        let input = "myArray[1 + 1]";
+
+        let lexer = Lexer::new(input);
+
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program,
+            vec![Statement::Expression(Expression::Index {
+                left: Box::new(Expression::Identifier(Identifier(String::from("myArray")))),
+                index: Box::new(Expression::Infix(
+                    Box::new(Expression::Literal(Literal::Int(1))),
+                    Infix::Plus,
+                    Box::new(Expression::Literal(Literal::Int(1))),
+                ))
+            })]
+        )
     }
 }
