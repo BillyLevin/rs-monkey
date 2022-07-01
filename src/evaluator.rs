@@ -110,8 +110,18 @@ impl Evaluator {
             Literal::Int(num) => Object::Int(num),
             Literal::Boolean(boolean) => Object::Boolean(boolean),
             Literal::String(string) => Object::String(string),
-            Literal::Array(_) => todo!(),
+            Literal::Array(elements) => self.eval_array_literal_expression(elements),
         }
+    }
+
+    fn eval_array_literal_expression(&mut self, elements: Vec<Expression>) -> Object {
+        let elements = self.eval_expressions(elements);
+
+        if elements.len() == 1 && Self::is_error(elements.get(0).unwrap()) {
+            return elements.get(0).unwrap().clone();
+        }
+
+        Object::Array(elements)
     }
 
     fn eval_prefix_expression(&mut self, prefix: Prefix, right: Expression) -> Option<Object> {
@@ -624,5 +634,19 @@ mod tests {
         for (input, expected) in tests {
             assert_eq!(eval(input), expected);
         }
+    }
+
+    #[test]
+    fn eval_array_literals() {
+        let input = "[1, 2 * 2, 3 + 3]";
+
+        assert_eq!(
+            eval(input),
+            Some(Object::Array(vec![
+                Object::Int(1),
+                Object::Int(4),
+                Object::Int(6)
+            ]))
+        )
     }
 }

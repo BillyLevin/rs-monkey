@@ -19,6 +19,7 @@ pub enum Object {
     },
     String(String),
     Builtin(BuiltInFunction),
+    Array(Vec<Object>),
 }
 
 pub type BuiltInFunction = fn(Vec<Object>) -> Object;
@@ -42,6 +43,15 @@ impl std::fmt::Display for Object {
             }
             Object::String(string) => write!(f, "{}", string),
             Object::Builtin(_) => write!(f, "builtin function"),
+            Object::Array(elements) => {
+                let elements = elements
+                    .iter()
+                    .map(|el| format!("{}", el))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                write!(f, "[{}]", elements)
+            }
         }
     }
 }
