@@ -111,6 +111,7 @@ impl Evaluator {
             Literal::Boolean(boolean) => Object::Boolean(boolean),
             Literal::String(string) => Object::String(string),
             Literal::Array(elements) => self.eval_array_literal_expression(elements),
+            Literal::Hash(_) => todo!(),
         }
     }
 

@@ -182,6 +182,7 @@ impl<'a> Parser<'a> {
             Token::Function => self.parse_function_literal_expression(),
             Token::String(_) => Some(self.parse_string_literal_expression()),
             Token::LeftBracket => self.parse_array_literal_expression(),
+            Token::LeftBrace => self.parse_hash_literal_expression(),
             _ => None,
         }
     }
@@ -217,6 +218,36 @@ impl<'a> Parser<'a> {
         let elements = self.parse_expression_list(Token::RightBracket)?;
 
         Some(Expression::Literal(Literal::Array(elements)))
+    }
+
+    fn parse_hash_literal_expression(&mut self) -> Option<Expression> {
+        let mut pairs = Vec::new();
+
+        while !self.peek_token_is(Token::RightBrace) {
+            self.next_token();
+
+            let key = self.parse_expression(Precedence::Lowest)?;
+
+            if !self.expect_peek(Token::Colon) {
+                return None;
+            }
+
+            self.next_token();
+
+            let value = self.parse_expression(Precedence::Lowest)?;
+
+            pairs.push((key, value));
+
+            if !self.peek_token_is(Token::RightBrace) && !self.expect_peek(Token::Comma) {
+                return None;
+            }
+        }
+
+        if !self.expect_peek(Token::RightBrace) {
+            return None;
+        }
+
+        Some(Expression::Literal(Literal::Hash(pairs)))
     }
 
     fn parse_expression_list(&mut self, end: Token) -> Option<Vec<Expression>> {
@@ -1375,7 +1406,6 @@ mod tests {
     #[test]
     fn parse_index_expressions() {
         let input = "myArray[1 + 1]";
-
         let lexer = Lexer::new(input);
 
         let mut parser = Parser::new(lexer);
@@ -1394,5 +1424,121 @@ mod tests {
                 ))
             })]
         )
+    }
+
+    #[test]
+    fn parse_hash_literal_expressions() {
+        let tests = vec![
+            (
+                "{\"one\": 1, \"two\": 2, \"three\": 3}",
+                vec![
+                    (
+                        Expression::Literal(Literal::String(String::from("one"))),
+                        Expression::Literal(Literal::Int(1)),
+                    ),
+                    (
+                        Expression::Literal(Literal::String(String::from("two"))),
+                        Expression::Literal(Literal::Int(2)),
+                    ),
+                    (
+                        Expression::Literal(Literal::String(String::from("three"))),
+                        Expression::Literal(Literal::Int(3)),
+                    ),
+                ],
+            ),
+            ("{}", vec![]),
+            (
+                "{1: 1, 2: 2, 3: 3}",
+                vec![
+                    (
+                        Expression::Literal(Literal::Int(1)),
+                        Expression::Literal(Literal::Int(1)),
+                    ),
+                    (
+                        Expression::Literal(Literal::Int(2)),
+                        Expression::Literal(Literal::Int(2)),
+                    ),
+                    (
+                        Expression::Literal(Literal::Int(3)),
+                        Expression::Literal(Literal::Int(3)),
+                    ),
+                ],
+            ),
+            (
+                "{true: 1, false: 2}",
+                vec![
+                    (
+                        Expression::Literal(Literal::Boolean(true)),
+                        Expression::Literal(Literal::Int(1)),
+                    ),
+                    (
+                        Expression::Literal(Literal::Boolean(false)),
+                        Expression::Literal(Literal::Int(2)),
+                    ),
+                ],
+            ),
+            (
+                "{\"one\": 0 + 1, \"two\": 10 - 8, \"three\": 15 / 5}",
+                vec![
+                    (
+                        Expression::Literal(Literal::String(String::from("one"))),
+                        Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(0))),
+                            Infix::Plus,
+                            Box::new(Expression::Literal(Literal::Int(1))),
+                        ),
+                    ),
+                    (
+                        Expression::Literal(Literal::String(String::from("two"))),
+                        Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(10))),
+                            Infix::Minus,
+                            Box::new(Expression::Literal(Literal::Int(8))),
+                        ),
+                    ),
+                    (
+                        Expression::Literal(Literal::String(String::from("three"))),
+                        Expression::Infix(
+                            Box::new(Expression::Literal(Literal::Int(15))),
+                            Infix::Divide,
+                            Box::new(Expression::Literal(Literal::Int(5))),
+                        ),
+                    ),
+                ],
+            ),
+            (
+                "{one: 1, two: 2, three: 3}",
+                vec![
+                    (
+                        Expression::Identifier(Identifier(String::from("one"))),
+                        Expression::Literal(Literal::Int(1)),
+                    ),
+                    (
+                        Expression::Identifier(Identifier(String::from("two"))),
+                        Expression::Literal(Literal::Int(2)),
+                    ),
+                    (
+                        Expression::Identifier(Identifier(String::from("three"))),
+                        Expression::Literal(Literal::Int(3)),
+                    ),
+                ],
+            ),
+        ];
+
+        for (input, expected_pairs) in tests {
+            let lexer = Lexer::new(input);
+
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            check_parser_errors(parser);
+
+            assert_eq!(
+                program,
+                vec![Statement::Expression(Expression::Literal(Literal::Hash(
+                    expected_pairs
+                )))]
+            );
+        }
     }
 }
