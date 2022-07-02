@@ -91,7 +91,7 @@ impl Evaluator {
                 function,
                 arguments,
             } => Some(self.eval_call_expression(*function, arguments)),
-            Expression::Index { .. } => todo!(),
+            Expression::Index { left, index } => self.eval_index_expression(*left, *index),
         }
     }
 
@@ -295,6 +295,44 @@ impl Evaluator {
         match evaluated_body {
             Some(obj) => obj,
             None => Object::Null,
+        }
+    }
+
+    fn eval_index_expression(&mut self, left: Expression, index: Expression) -> Option<Object> {
+        let left = self.eval_expression(left)?;
+
+        if Self::is_error(&left) {
+            return Some(left);
+        }
+
+        let index = self.eval_expression(index)?;
+
+        if Self::is_error(&index) {
+            return Some(index);
+        }
+
+        match left {
+            Object::Array(elements) => {
+                if let Object::Int(idx) = index {
+                    let max = elements.len() as i64;
+
+                    if idx < 0 || idx > max {
+                        return Some(Object::Null);
+                    }
+
+                    if let Some(obj) = elements.get(idx as usize) {
+                        Some(obj.clone())
+                    } else {
+                        Some(Object::Null)
+                    }
+                } else {
+                    return Some(Object::Error(format!("invalid index: {}", index)));
+                }
+            }
+            _ => Some(Object::Error(format!(
+                "index operator not supported: {}",
+                left
+            ))),
         }
     }
 
@@ -648,5 +686,31 @@ mod tests {
                 Object::Int(6)
             ]))
         )
+    }
+
+    #[test]
+    fn eval_array_index_expressions() {
+        let tests = vec![
+            ("[1, 2, 3][0]", Some(Object::Int(1))),
+            ("[1, 2, 3][1]", Some(Object::Int(2))),
+            ("[1, 2, 3][2]", Some(Object::Int(3))),
+            ("let i = 0; [1][i];", Some(Object::Int(1))),
+            ("[1, 2, 3][1 + 1];", Some(Object::Int(3))),
+            ("let myArray = [1, 2, 3]; myArray[2];", Some(Object::Int(3))),
+            (
+                "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+                Some(Object::Int(6)),
+            ),
+            (
+                "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+                Some(Object::Int(2)),
+            ),
+            ("[1, 2, 3][3]", Some(Object::Null)),
+            ("[1, 2, 3][-1]", Some(Object::Null)),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
     }
 }
