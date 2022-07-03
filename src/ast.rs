@@ -42,7 +42,7 @@ pub enum Literal {
     Hash(Vec<(Expression, Expression)>),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq)]
 pub struct Identifier(pub String);
 
 #[derive(Debug, PartialEq, Clone)]

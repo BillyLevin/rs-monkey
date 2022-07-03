@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     ast::{BlockStatement, Expression, Identifier, Infix, Literal, Prefix, Program, Statement},
@@ -111,7 +111,7 @@ impl Evaluator {
             Literal::Boolean(boolean) => Object::Boolean(boolean),
             Literal::String(string) => Object::String(string),
             Literal::Array(elements) => self.eval_array_literal_expression(elements),
-            Literal::Hash(_) => todo!(),
+            Literal::Hash(pairs) => self.eval_hash_literal_expression(pairs),
         }
     }
 
@@ -123,6 +123,35 @@ impl Evaluator {
         }
 
         Object::Array(elements)
+    }
+
+    fn eval_hash_literal_expression(&mut self, pairs: Vec<(Expression, Expression)>) -> Object {
+        let mut hash = HashMap::new();
+
+        for (key, value) in pairs {
+            let key = self.eval_expression(key).unwrap_or(Object::Null);
+
+            if Self::is_error(&key) {
+                return key;
+            }
+
+            let value = self.eval_expression(value).unwrap_or(Object::Null);
+
+            if Self::is_error(&value) {
+                return value;
+            }
+
+            let is_valid_key =
+                matches!(key, Object::String(_) | Object::Int(_) | Object::Boolean(_));
+
+            if !is_valid_key {
+                return Object::Error(format!("invalid hash key: {}", key));
+            }
+
+            hash.insert(key, value);
+        }
+
+        Object::Hash(hash)
     }
 
     fn eval_prefix_expression(&mut self, prefix: Prefix, right: Expression) -> Option<Object> {
@@ -818,5 +847,34 @@ mod tests {
         for (input, expected) in tests {
             assert_eq!(eval(input), expected);
         }
+    }
+
+    #[test]
+    fn eval_hash_literals() {
+        let input = "let two = \"two\";
+        {
+            \"one\": 10 - 9,
+            two: 1 + 1,
+            \"thr\" + \"ee\": 6 / 2,
+            4: 4,
+            true: 5,
+            false: 6
+        }";
+
+        assert_eq!(
+            eval(input),
+            Some(Object::Hash(
+                vec![
+                    (Object::String(String::from("one")), Object::Int(1),),
+                    (Object::String(String::from("two")), Object::Int(2),),
+                    (Object::String(String::from("three")), Object::Int(3),),
+                    (Object::Int(4), Object::Int(4)),
+                    (Object::Boolean(true), Object::Int(5)),
+                    (Object::Boolean(false), Object::Int(6)),
+                ]
+                .into_iter()
+                .collect()
+            ))
+        );
     }
 }
