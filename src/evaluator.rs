@@ -141,13 +141,6 @@ impl Evaluator {
                 return value;
             }
 
-            let is_valid_key =
-                matches!(key, Object::String(_) | Object::Int(_) | Object::Boolean(_));
-
-            if !is_valid_key {
-                return Object::Error(format!("invalid hash key: {}", key));
-            }
-
             hash.insert(key, value);
         }
 
@@ -357,6 +350,20 @@ impl Evaluator {
                     }
                 } else {
                     return Some(Object::Error(format!("invalid index: {}", index)));
+                }
+            }
+            Object::Hash(hash) => {
+                if matches!(
+                    index,
+                    Object::Int(_) | Object::String(_) | Object::Boolean(_)
+                ) {
+                    if let Some(obj) = hash.get(&index) {
+                        Some(obj.clone())
+                    } else {
+                        Some(Object::Null)
+                    }
+                } else {
+                    Some(Object::Error(format!("unusable as hash key: {}", index)))
                 }
             }
             _ => Some(Object::Error(format!(
@@ -572,6 +579,12 @@ mod tests {
                 "\"Hello\" - \"World\"",
                 Some(Object::Error(String::from(
                     "unknown operator: Hello - World",
+                ))),
+            ),
+            (
+                "{\"name\": \"Monkey\"}[fn(x) { x }];",
+                Some(Object::Error(String::from(
+                    "unusable as hash key: fn(x) {}",
                 ))),
             ),
         ];
@@ -876,5 +889,22 @@ mod tests {
                 .collect()
             ))
         );
+    }
+
+    #[test]
+    fn eval_hash_index_expressions() {
+        let tests = vec![
+            ("{\"foo\": 5}[\"foo\"]", Some(Object::Int(5))),
+            ("{\"foo\": 5}[\"bar\"]", Some(Object::Null)),
+            ("let key = \"foo\"; {\"foo\": 5}[key]", Some(Object::Int(5))),
+            ("{}[\"foo\"]", Some(Object::Null)),
+            ("{5: 5}[5]", Some(Object::Int(5))),
+            ("{true: 5}[true]", Some(Object::Int(5))),
+            ("{false: 5}[false]", Some(Object::Int(5))),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(eval(input), expected);
+        }
     }
 }
