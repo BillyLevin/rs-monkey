@@ -10,6 +10,7 @@ pub fn initialize_builtins() -> HashMap<String, Object> {
     builtins.insert(String::from("last"), Object::Builtin(last));
     builtins.insert(String::from("rest"), Object::Builtin(rest));
     builtins.insert(String::from("push"), Object::Builtin(push));
+    builtins.insert(String::from("puts"), Object::Builtin(puts));
 
     builtins
 }
@@ -108,4 +109,12 @@ fn push(arguments: Vec<Object>) -> Object {
         }
         arg => Object::Error(format!("argument to `push` must be array, got {}", arg)),
     }
+}
+
+fn puts(arguments: Vec<Object>) -> Object {
+    for arg in arguments {
+        println!("{}", arg);
+    }
+
+    Object::Null
 }
